@@ -34,7 +34,7 @@ Your responses should:
                 model_path=model_path,
                 n_gpu_layers=32,
                 verbose=False,
-                n_ctx=2048
+                n_ctx=32768
             )
         except Exception as e:
             logging.error(f"Error loading model: {str(e)}")
