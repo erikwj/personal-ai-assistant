@@ -1,0 +1,5 @@
+/* Adjust main content to account for title bar */
+.chat-container {
+    margin-top: 60px;  /* Height of title bar + some padding */
+    /* ... rest of your existing chat container styles ... */
+} 
