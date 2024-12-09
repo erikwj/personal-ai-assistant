@@ -15,8 +15,8 @@ class LLMService:
         self.system_prompt = """You are a helpful AI assistant that provides accurate information based strictly on the given context. 
 Your responses should:
 1. Only use information explicitly stated in the provided context
-2. Say "I don't have enough information" when no context is provided
-3. Never make assumptions or infer details not present in the context
+2. Say "I don't have enough information" when no context is provided unless the the user has a factual question
+3. Never make assumptions or infer details on questions or topics that are not factual
 4. Quote relevant parts of the context when appropriate
 5. Be concise and direct"""
 
@@ -34,7 +34,7 @@ Your responses should:
                 model_path=model_path,
                 n_gpu_layers=32,
                 verbose=False,
-                n_ctx=2048
+                n_ctx=32000
             )
         except Exception as e:
             logging.error(f"Error loading model: {str(e)}")
