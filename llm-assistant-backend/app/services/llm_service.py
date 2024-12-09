@@ -9,7 +9,7 @@ import aiohttp
 class LLMService:
     def __init__(self, docstore_url: str = "http://localhost:8001"):
         self.docstore_url = docstore_url
-        model_path = os.getenv("MODEL_PATH", "models/Meta-Llama-3-8B-Instruct.Q6_K.gguf")
+        model_path = os.getenv("MODEL_PATH")
         
         # Define system prompts
         self.system_prompt = """You are a helpful AI assistant that provides accurate information based strictly on the given context. 
