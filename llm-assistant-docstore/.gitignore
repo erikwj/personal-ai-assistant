@@ -40,3 +40,6 @@ ENV/
 data/ 
 
 models/embeddings/
+
+
+.idea/*

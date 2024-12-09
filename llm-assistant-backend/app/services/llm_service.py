@@ -16,7 +16,7 @@ class LLMService:
 Your responses should:
 1. Only use information explicitly stated in the provided context
 2. Say "I don't have enough information" when no context is provided unless the the user has a factual question
-3. Never make assumptions or infer details on questions or topics that are about events in time, something for which you need to be up to date on the news
+3. Never make assumptions or infer details on questions or topics that are not factual
 4. Quote relevant parts of the context when appropriate
 5. Be concise and direct"""
 
@@ -34,7 +34,7 @@ Your responses should:
                 model_path=model_path,
                 n_gpu_layers=32,
                 verbose=False,
-                n_ctx=8192
+                n_ctx=32000
             )
         except Exception as e:
             logging.error(f"Error loading model: {str(e)}")
