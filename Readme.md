@@ -54,6 +54,6 @@ npm install
 npm run dev
 ```
 
-Go to https://localhost:8000 in the browser
+Go to http://localhost:8000 in the browser
 
 
