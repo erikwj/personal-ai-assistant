@@ -20,7 +20,7 @@ python run.py
 
 ``` bash
 
-cd llm-assistant-doctore
+cd llm-assistant-docstore
 
 ./prepare_python.sh
 
