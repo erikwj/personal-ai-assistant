@@ -18,6 +18,9 @@ python run.py
 
 ## Install/Run DocStore
 
+
+Open a new terminal
+
 ``` bash
 
 cd llm-assistant-docstore
@@ -39,6 +42,8 @@ python run.py
 ```
 
 ## Install/Run Frontend
+
+Open a new terminal
 
 ``` bash
 
