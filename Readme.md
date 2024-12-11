@@ -2,6 +2,8 @@
 
 Make sure the GGUF model file is in the llm-assistant-backend/app/models folder.
 
+GGUF models can be found on Huggingface.co. Or [click to download](https://huggingface.co/MaziyarPanahi/Qwen2-7B-Instruct-GGUF/resolve/main/Qwen2-7B-Instruct.Q6_K.gguf?download=true) a model.
+
 ``` bash
 
 cd llm-assistant-backend
