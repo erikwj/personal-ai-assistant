@@ -1,3 +1,10 @@
+### Prerequisites
+
+- Mac M1/M2/M3
+- XCode installed
+- NodeJS installed
+- Python3.11 installed
+
 ## Install/Run Backend
 
 Make sure the GGUF model file is in the llm-assistant-backend/app/models folder.
