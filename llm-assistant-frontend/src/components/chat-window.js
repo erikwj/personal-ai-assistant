@@ -1,5 +1,24 @@
 import { LitElement, html, css } from 'lit';
 import { styles } from '../styles.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+import MarkdownIt from 'markdown-it';
+import hljs from 'highlight.js';
+import 'highlight.js/styles/github-dark.css';  // or another theme
+
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true,
+  breaks: true,
+  highlight: function (str, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return hljs.highlight(str, { language: lang }).value;
+      } catch (__) {}
+    }
+    return ''; // use external default escaping
+  }
+});
 
 export class ChatWindow extends LitElement {
   static properties = {
@@ -26,6 +45,7 @@ export class ChatWindow extends LitElement {
         height: 100%;
         width: 100%;
         min-height: 0;
+        overflow: hidden;
       }
 
       .messages-container {
@@ -33,17 +53,59 @@ export class ChatWindow extends LitElement {
         min-height: 0;
         display: flex;
         flex-direction: column;
+        overflow: hidden;
       }
 
       .messages-scroll {
         flex: 1;
         min-height: 0;
         padding: 1rem;
+        overflow-y: auto;
+        scroll-behavior: smooth;
       }
 
       .message-bubble {
         padding: 12px 16px;
         border-radius: 16px;
+        word-break: break-word;
+        max-width: 100%;
+      }
+
+      .message-bubble pre {
+        max-width: 100%;
+        background-color: rgba(0, 0, 0, 0.1);
+        border-radius: 4px;
+        margin: 8px 0;
+        position: relative;
+      }
+
+      .message-bubble code {
+        font-family: monospace;
+        font-size: 0.9em;
+        padding: 0.2em 0.4em;
+      }
+
+      .message-bubble pre code {
+        display: block;
+        padding: 1em;
+        overflow-x: auto;
+        white-space: pre;
+        line-height: 1.5;
+        width: 100%;
+      }
+
+      .message-bubble pre code::-webkit-scrollbar {
+        height: 8px;
+      }
+
+      .message-bubble pre code::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 4px;
+      }
+
+      .message-bubble pre code::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 4px;
       }
 
       .user .message-bubble {
@@ -56,10 +118,12 @@ export class ChatWindow extends LitElement {
 
       .input-container {
         flex: 0 0 auto;
+        width: 100%;
       }
 
       .title-container {
         flex: 0 0 auto;
+        width: 100%;
       }
 
       .text-center {
@@ -85,6 +149,36 @@ export class ChatWindow extends LitElement {
     }));
   }
 
+  formatContent(message) {
+    if (message.role === 'assistant') {
+      return unsafeHTML(md.render(message.content));
+    }
+    return message.content;
+  }
+
+  scrollToBottom() {
+    requestAnimationFrame(() => {
+      const container = this.shadowRoot.querySelector('.messages-scroll');
+      if (container) {
+        const scrollHeight = container.scrollHeight;
+        container.scrollTo({
+          top: scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+    });
+  }
+
+  updated(changedProperties) {
+    if (changedProperties.has('messages')) {
+      this.scrollToBottom();
+    }
+  }
+
+  async firstUpdated() {
+    this.scrollToBottom();
+  }
+
   render() {
     return html`
       <div class="chat-container">
@@ -95,12 +189,13 @@ export class ChatWindow extends LitElement {
         <div class="messages-container bg-gray-100">
           <div class="messages-scroll space-y-4">
             ${this.messages.map((message, index) => html`
-              <div class="flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}">
+              <div class="flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}"
+                   @rendered=${() => this.scrollToBottom()}>
                 <div class="${message.role === 'user' 
                   ? 'bg-blue-500 text-white' 
                   : 'bg-white text-gray-800'} 
-                  message-bubble shadow-sm">
-                  ${message.content}
+                  message-bubble shadow-sm markdown-body">
+                  ${this.formatContent(message)}
                   ${message.role === 'assistant' && 
                     index === this.messages.length - 1 && 
                     this.waitingForFirstToken ? html`
@@ -138,11 +233,6 @@ export class ChatWindow extends LitElement {
         </div>
       </div>
     `;
-  }
-
-  updated() {
-    const container = this.shadowRoot.querySelector('.messages-scroll');
-    container.scrollTop = container.scrollHeight;
   }
 }
 
