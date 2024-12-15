@@ -1,8 +1,0 @@
-{
-  "dependencies": {
-    "@types/prismjs": "^1.26.5",
-    "highlight.js": "^11.11.0",
-    "markdown-it": "^14.1.0",
-    "prismjs": "^1.29.0"
-  }
-}

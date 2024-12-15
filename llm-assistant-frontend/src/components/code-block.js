@@ -1,28 +1,23 @@
-import { LitElement, html, css } from "lit";
+import { LitElement, html, css, unsafeCSS } from "lit";
 import Prism from "prismjs";
-import "prismjs/themes/prism-tomorrow.css";
-import "prismjs/components/prism-python";
-import "prismjs/components/prism-javascript";
-import "prismjs/components/prism-typescript";
-import "prismjs/components/prism-bash";
-import "prismjs/components/prism-json";
-import "prismjs/components/prism-markdown";
-import "prismjs/components/prism-yaml";
-import "prismjs/components/prism-css";
+import prismStyle from "../../node_modules/prismjs/themes/prism-tomorrow.css?inline";
+import "../../node_modules/prismjs/components/prism-python";
+import "../../node_modules/prismjs/components/prism-javascript";
+import "../../node_modules/prismjs/components/prism-typescript";
+import "../../node_modules/prismjs/components/prism-bash";
+import "../../node_modules/prismjs/components/prism-json";
+import "../../node_modules/prismjs/components/prism-markdown";
+import "../../node_modules/prismjs/components/prism-yaml";
+import "../../node_modules/prismjs/components/prism-css";
+import "../../node_modules/prismjs/components/prism-go";
+import "../../node_modules/prismjs/components/prism-java";
 
 class CodeBlock extends LitElement {
   static get properties() {
     return {
-      language: {
-        type: String,
-      },
-      code: {
-        type: String,
-        attribute: false,
-      },
-      theme: {
-        type: String,
-      },
+      language: { type: String },
+      code: { type: String, attribute: false },
+      theme: { type: String },
     };
   }
 
@@ -34,53 +29,76 @@ class CodeBlock extends LitElement {
 
   async updated() {
     try {
-      const highlight = Prism.highlight(
+      const codeElement = this.shadowRoot.querySelector('code');
+      if (!codeElement) return;
+
+      // Add Prism's classes
+      codeElement.className = `language-${this.language}`;
+      
+      // Apply highlighting
+      const highlighted = Prism.highlight(
         this.code || '',
         Prism.languages[this.language] || Prism.languages.text,
         this.language
       );
-      this.shadowRoot.querySelector('#output').innerHTML = highlight;
+      
+      codeElement.innerHTML = highlighted;
     } catch(err) {
       console.error('Highlighting failed:', err);
-      this.shadowRoot.querySelector('#output').textContent = this.code;
+      const codeElement = this.shadowRoot.querySelector('code');
+      if (codeElement) {
+        codeElement.textContent = this.code;
+      }
     }
   }
 
   static get styles() {
-    return css`
-      :host {
-        display: block;
-        margin: 8px 0;
-      }
-      
-      pre {
-        margin: 0;
-        padding: 1em;
-        overflow-x: auto;
-        background: #2d2d2d;
-        border-radius: 4px;
-      }
+    return [
+      unsafeCSS(prismStyle),
+      css`
+        :host {
+          display: block;
+          margin: 8px 0;
+        }
+        
+        pre {
+          margin: 0;
+          padding: 1em;
+          overflow-x: auto;
+          background: #222;
+          border-radius: 0 0 4px 4px;
+        }
 
-      code {
-        font-family: 'Fira Code', monospace;
-        font-size: 0.9em;
-        line-height: 1.5;
-      }
+        .header {
+          background: #1a1a1a;
+          color: #fdfdfd;
+          padding: 8px 16px;
+          border-radius: 4px 4px 0 0;
+          font-size: 0.9em;
+        }
 
-      .header {
-        background: #222;
-        color: #fafafa;
-        padding: 8px 16px;
-        border-radius: 4px 4px 0 0;
-        font-size: 0.9em;
-      }
-    `;
+        code {
+          font-family: 'Fira Code', monospace;
+          font-size: 14px;
+        }
+
+        /* Token colors */
+        .token.comment { color: #6a9955; }
+        .token.keyword { color: #569cd6; }
+        .token.string { color: #ce9178; }
+        .token.number { color: #b5cea8; }
+        .token.operator { color: #d4d4d4; }
+        .token.class-name { color: #4ec9b0; }
+        .token.function { color: #dcdcaa; }
+        .token.punctuation { color: #d4d4d4; }
+      `
+    ];
   }
 
   render() {
     return html`
       <div class="header">${this.language}</div>
-      <pre class="language-${this.language}"><code id="output"></code></pre>
+      <pre><code></code></pre>
     `;
   }
 }
