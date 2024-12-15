@@ -18,6 +18,7 @@ class CodeBlock extends LitElement {
       language: { type: String },
       code: { type: String, attribute: false },
       theme: { type: String },
+      copySuccess: { type: Boolean, state: true }
     };
   }
 
@@ -25,6 +26,19 @@ class CodeBlock extends LitElement {
     super();
     this.language = "text";
     this.theme = "prism-tomorrow";
+    this.copySuccess = false;
+  }
+
+  async copyCode() {
+    try {
+      await navigator.clipboard.writeText(this.code);
+      this.copySuccess = true;
+      setTimeout(() => {
+        this.copySuccess = false;
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
   }
 
   async updated() {
@@ -75,6 +89,33 @@ class CodeBlock extends LitElement {
           padding: 8px 16px;
           border-radius: 4px 4px 0 0;
           font-size: 0.9em;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .copy-button {
+          background: transparent;
+          border: 1px solid #444;
+          color: #fdfdfd;
+          padding: 4px 8px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          transition: all 0.2s ease;
+        }
+
+        .copy-button:hover {
+          background: #333;
+          border-color: #666;
+        }
+
+        .copy-success {
+          color: #4ade80;
+          border-color: #4ade80;
         }
 
         code {
@@ -97,7 +138,15 @@ class CodeBlock extends LitElement {
 
   render() {
     return html`
-      <div class="header">${this.language}</div>
+      <div class="header">
+        <span>${this.language}</span>
+        <button 
+          class="copy-button ${this.copySuccess ? 'copy-success' : ''}" 
+          @click=${this.copyCode}
+        >
+          ${this.copySuccess ? 'Copied!' : 'Copy'}
+        </button>
+      </div>
       <pre><code></code></pre>
     `;
   }
