@@ -49,7 +49,11 @@ Your responses should:
             if last_user_message:
                 # Fetch context for the last user message
                 context = await self.get_context(last_user_message)
-                logging.info(f"Retrieved context: {context[:200]}..." if context else "No context found")
+                if context:
+                    logging.info("Context found and will be used for response")
+                    logging.debug(f"Context preview: {context[:200]}...")
+                else:
+                    logging.info("No relevant context found")
 
             # Build the prompt with system message and context
             formatted_messages = [f"System: {self.system_prompt}"]
@@ -92,26 +96,48 @@ Your responses should:
             logging.exception("Full traceback:")
             yield f"Error generating response: {str(e)}"
 
-    async def get_context(self, prompt: str, num_context: int = 3, min_similarity: float = 0.1) -> Optional[str]:
-        """Fetch relevant context from the document store"""
+    async def get_context(self, query: str) -> Optional[str]:
         try:
+            # Make request to docstore with new query format
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                    f"{self.docstore_url}/context",
+                    f"{self.docstore_url}/query",
                     json={
-                        "prompt": prompt,
-                        "num_context": num_context,
-                        "min_similarity": min_similarity
+                        "query": query,
+                        "num_results": 2,
+                        "min_similarity": 0.1
                     }
                 ) as response:
                     if response.status == 200:
                         result = await response.json()
-                        return result["context"] if result["has_context"] else None
+                        
+                        # Check if we have results using new response format
+                        if result.get("has_results") and result.get("results"):
+                            # Use dict to deduplicate by source
+                            unique_contexts = {}
+                            
+                            for doc_result in result["results"]:
+                                source = doc_result["metadata"]["source"]
+                                # Only add if we haven't seen this source before
+                                if source not in unique_contexts:
+                                    full_doc = doc_result["metadata"]["full_document"]
+                                    unique_contexts[source] = f"Source: {source}\n\n{full_doc}"
+                            
+                            if not unique_contexts:
+                                return None
+                            
+                            # Combine unique contexts with separators
+                            context = "\n\n---\n\n".join(unique_contexts.values())
+                            logging.info(f"Found {len(unique_contexts)} unique documents for context")
+                            return context
+                            
+                        return None
                     else:
                         logging.error(f"Error fetching context: {response.status}")
                         return None
+
         except Exception as e:
-            logging.error(f"Error fetching context: {str(e)}")
+            logging.error(f"Error getting context: {str(e)}", exc_info=True)
             return None
 
     async def process_prompt(self, prompt: str) -> str:
