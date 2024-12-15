@@ -84,7 +84,7 @@ Your responses should:
             for output in stream:
                 if output and 'choices' in output and len(output['choices']) > 0:
                     text = output['choices'][0]['text']
-                    if text.strip():
+                    if text:
                         yield text
 
         except Exception as e:

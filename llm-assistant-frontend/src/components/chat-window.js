@@ -2,22 +2,14 @@ import { LitElement, html, css } from 'lit';
 import { styles } from '../styles.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import MarkdownIt from 'markdown-it';
-import hljs from 'highlight.js';
-import 'highlight.js/styles/github-dark.css';  // or another theme
+import './code-block.js';
 
 const md = new MarkdownIt({
   html: true,
   linkify: true,
   typographer: true,
   breaks: true,
-  highlight: function (str, lang) {
-    if (lang && hljs.getLanguage(lang)) {
-      try {
-        return hljs.highlight(str, { language: lang }).value;
-      } catch (__) {}
-    }
-    return ''; // use external default escaping
-  }
+  xhtmlOut: true
 });
 
 export class ChatWindow extends LitElement {
@@ -69,18 +61,19 @@ export class ChatWindow extends LitElement {
         border-radius: 16px;
         word-break: break-word;
         max-width: 100%;
+        box-sizing: border-box;
       }
 
       .message-bubble pre {
-        max-width: 100%;
-        background-color: rgba(0, 0, 0, 0.1);
+        margin: 8px -10px;
+        background-color: #2d2d2d;
         border-radius: 4px;
-        margin: 8px 0;
         position: relative;
+        box-sizing: border-box;
       }
 
       .message-bubble code {
-        font-family: monospace;
+        font-family: 'Fira Code', monospace;
         font-size: 0.9em;
         padding: 0.2em 0.4em;
       }
@@ -91,7 +84,22 @@ export class ChatWindow extends LitElement {
         overflow-x: auto;
         white-space: pre;
         line-height: 1.5;
-        width: 100%;
+        margin: 0 10px;
+        font-family: 'Fira Code', monospace;
+      }
+
+      .message-bubble pre[class*="language-"] {
+        margin: 8px -10px;
+        padding: 0;
+        background: #2d2d2d;
+      }
+
+      .message-bubble code[class*="language-"] {
+        padding: 1em;
+        margin: 0 10px;
+        background: none;
+        text-shadow: none;
+        font-family: 'Fira Code', monospace;
       }
 
       .message-bubble pre code::-webkit-scrollbar {
@@ -99,12 +107,12 @@ export class ChatWindow extends LitElement {
       }
 
       .message-bubble pre code::-webkit-scrollbar-track {
-        background: rgba(0, 0, 0, 0.1);
+        background: rgba(0, 0, 0, 0.2);
         border-radius: 4px;
       }
 
       .message-bubble pre code::-webkit-scrollbar-thumb {
-        background: rgba(0, 0, 0, 0.3);
+        background: rgba(255, 255, 255, 0.2);
         border-radius: 4px;
       }
 
@@ -119,6 +127,25 @@ export class ChatWindow extends LitElement {
       .input-container {
         flex: 0 0 auto;
         width: 100%;
+        box-sizing: border-box;
+      }
+
+      .input-wrapper {
+        display: flex;
+        gap: 1rem;
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: 1rem;
+      }
+
+      textarea {
+        flex: 1;
+        min-width: 0;  /* Important for flex items */
+        box-sizing: border-box;
+      }
+
+      button {
+        flex-shrink: 0;  /* Prevent button from shrinking */
       }
 
       .title-container {
@@ -151,7 +178,66 @@ export class ChatWindow extends LitElement {
 
   formatContent(message) {
     if (message.role === 'assistant') {
-      return unsafeHTML(md.render(message.content));
+      const content = message.content;
+      const segments = [];
+      let currentPosition = 0;
+
+      while (currentPosition < content.length) {
+        const nextCodeBlock = content.indexOf('```', currentPosition);
+
+        if (nextCodeBlock === -1) {
+          // Preserve whitespace in remaining text
+          if (currentPosition < content.length) {
+            segments.push({
+              type: 'text',
+              content: content.slice(currentPosition)
+            });
+          }
+          break;
+        }
+
+        // Preserve whitespace in text before code block
+        if (nextCodeBlock > currentPosition) {
+          segments.push({
+            type: 'text',
+            content: content.slice(currentPosition, nextCodeBlock)
+          });
+        }
+
+        const codeStart = content.indexOf('\n', nextCodeBlock + 3);
+        const codeEnd = content.indexOf('```', codeStart);
+        
+        const language = content.slice(nextCodeBlock + 3, codeStart).trim(); // Only trim language identifier
+
+        if (codeEnd === -1) {
+          // Preserve whitespace in incomplete code block
+          segments.push({
+            type: 'code',
+            language: language || 'text',
+            content: content.slice(codeStart + 1) // Keep the newline
+          });
+          break;
+        } else {
+          // Preserve whitespace in complete code block
+          segments.push({
+            type: 'code',
+            language: language || 'text',
+            content: content.slice(codeStart + 1, codeEnd) // Keep the newline
+          });
+          currentPosition = codeEnd + 3;
+        }
+      }
+
+      return html`
+        ${segments.map(segment => {
+          if (segment.type === 'code') {
+            return html`<code-block .language=${segment.language} .code=${segment.content}></code-block>`;
+          } else {
+            // Configure markdown to preserve whitespace
+            return unsafeHTML(md.render(segment.content));
+          }
+        })}
+      `;
     }
     return message.content;
   }
@@ -211,8 +297,8 @@ export class ChatWindow extends LitElement {
           </div>
         </div>
 
-        <div class="input-container border-t border-gray-200 bg-white p-4">
-          <div class="flex space-x-4">
+        <div class="input-container border-t border-gray-200 bg-white">
+          <div class="input-wrapper">
             <textarea
               class="flex-1 border border-gray-200 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows="1"
