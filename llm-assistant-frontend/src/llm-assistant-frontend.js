@@ -2,6 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { styles } from './styles.js';
 import { marked } from 'marked';
 import './components/chat-window.js';
+import './components/context-panel.js';
 
 class LlmAssistantFrontend extends LitElement {
   static properties = {
@@ -34,6 +35,12 @@ class LlmAssistantFrontend extends LitElement {
       role: 'user',
       content: this.inputText.trim()
     };
+
+    const contextPanel = this.shadowRoot.querySelector('context-panel');
+    if (contextPanel) {
+      contextPanel.fetchContext(this.inputText.trim())
+        .catch(error => console.error('Error fetching context:', error));
+    }
 
     this.messages = [...this.messages, userMessage];
     this.inputText = '';
@@ -99,6 +106,7 @@ class LlmAssistantFrontend extends LitElement {
 
   render() {
     return html`
+      <div class="relative">
         <chat-window
           .messages=${this.messages}
           .inputText=${this.inputText}
@@ -107,6 +115,9 @@ class LlmAssistantFrontend extends LitElement {
           @input-change=${this.handleInputChange}
           @send-message=${this.sendMessage}
         ></chat-window>
+        
+        <context-panel></context-panel>
+      </div>
     `;
   }
 }
