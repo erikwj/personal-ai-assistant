@@ -28,6 +28,41 @@ export class ContextPanel extends LitElement {
       position: relative;
     }
 
+    .panel-container {
+      width: 320px;
+      height: 100vh;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      background-color: #2d2d2d;
+      border-radius: 0 0 4px 4px;
+      box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
+      border-left: 1px solid #111;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-container.visible {
+      transform: translateX(0);
+    }
+
+    .panel-header {
+      flex: 0 0 auto;
+      border-bottom: 1px solid #e5e7eb;
+      background-color: #222;
+    }
+
+    .panel-content {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+
+    .context-items {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
     .toggle-button {
       position: absolute;
       left: -40px;
@@ -54,21 +89,6 @@ export class ContextPanel extends LitElement {
       ring-color: rgb(59, 130, 246);
     }
 
-    .panel-container {
-      width: 320px;
-      height: 100%;
-      transform: translateX(100%);
-      transition: transform 0.3s ease;
-      background-color: #2d2d2d;
-      border-radius: 0 0 4px 4px;
-      box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
-      border-left: 1px solid #111;
-    }
-
-    .panel-container.visible {
-      transform: translateX(0);
-    }
-
     .title-text {
       text-align: center;
       padding: 10px;
@@ -77,6 +97,66 @@ export class ContextPanel extends LitElement {
     
     .text-context {
         padding: 10px;
+    }
+
+    .metadata-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      padding-top: 0.75rem;
+      margin-top: 0.75rem;
+      border-top: 1px solid #e5e7eb;
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+
+    .metadata-item {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      min-width: fit-content;
+    }
+
+    .source-item {
+      flex: 1 1 100%;
+    }
+
+    .metrics-container {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .metadata-label {
+      font-weight: 500;
+      color: #4b5563;
+    }
+
+    .metadata-value {
+      color: #6b7280;
+    }
+
+    .relevance-badge {
+      padding: 0.25rem 0.5rem;
+      border-radius: 9999px;
+      font-weight: 500;
+      text-transform: capitalize;
+    }
+
+    .relevance-high {
+      background-color: #dcfce7;
+      color: #166534;
+    }
+
+    .relevance-medium {
+      background-color: #fef9c3;
+      color: #854d0e;
+    }
+
+    .relevance-low {
+      background-color: #fee2e2;
+      color: #991b1b;
     }
   `;
 
@@ -121,12 +201,12 @@ export class ContextPanel extends LitElement {
             Context ${this.isVisible ? '←' : '→'}
           </button>
 
-          <div class="h-full flex flex-col">
-            <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
-              <h3 class="text-lg font-semibold text-gray-700 title-text">Related Context</h3>
-            </div>
+          <div class="panel-header">
+            <h3 class="text-lg font-semibold text-gray-700 title-text">Related Context</h3>
+          </div>
 
-            <div class="flex-1 overflow-y-auto p-4 space-y-3">
+          <div class="panel-content">
+            <div class="context-items">
               ${this.contexts.length === 0 
                 ? html`<p class="text-gray-500 text-context italic">No context available</p>`
                 : this.contexts.map(context => html`
@@ -134,10 +214,22 @@ export class ContextPanel extends LitElement {
                               hover:border-gray-300 transition-colors duration-200
                               hover:shadow-sm text-context">
                       <p class="text-gray-700 text-sm leading-relaxed mb-2">${context.text}</p>
-                      <div class="flex items-center justify-between text-xs text-gray-500 border-t border-gray-200 pt-2 mt-2">
-                        <span>Source: ${context.source}</span>
-                        <span>Relevance: ${context.relevance.toLowerCase()}</span>
-                        <span>Similarity: ${(context.similarity * 100).toFixed(1)}%</span>
+                      <div class="metadata-container">
+                        <div class="metadata-item source-item">
+                          <span class="metadata-label">Source:</span>
+                          <span class="metadata-value">${context.source}</span>
+                        </div>
+                        <div class="metrics-container">
+                          <div class="metadata-item">
+                            <span class="relevance-badge relevance-${context.relevance.toLowerCase()}">
+                              ${context.relevance.toLowerCase()}
+                            </span>
+                          </div>
+                          <div class="metadata-item">
+                            <span class="metadata-label">Similarity:</span>
+                            <span class="metadata-value">${context.similarity.toFixed(3)}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   `)
