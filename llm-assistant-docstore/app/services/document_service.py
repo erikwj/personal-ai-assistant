@@ -1,12 +1,12 @@
 import os
 from pathlib import Path
 import uuid
-from typing import List, Optional
+from typing import List, Optional, Dict
 import logging
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain.schema import Document
-from app.models.document import RelevanceLevel
+from app.models.document import QueryResponse, QueryResult, DocumentMetadata, RelevanceLevel
 
 class DocumentService:
     def __init__(self):
@@ -73,14 +73,13 @@ class DocumentService:
             
             # Create Document objects for each chunk
             documents = []
-            for i, chunk in enumerate(chunks):
+            for chunk in chunks:
                 documents.append(
                     Document(
                         page_content=chunk,
                         metadata={
-                            "filename": filename,
-                            "doc_id": doc_id,
-                            "chunk_index": i
+                            "source": filename,
+                            "full_document": text
                         }
                     )
                 )
@@ -119,7 +118,7 @@ class DocumentService:
         num_results: int = 3, 
         min_relevance: Optional[RelevanceLevel] = None,
         min_similarity: Optional[float] = None
-    ) -> List[dict]:
+    ) -> QueryResponse:
         try:
             logging.info(f"Querying documents with: '{query}'")
             
@@ -129,7 +128,7 @@ class DocumentService:
             
             if doc_count == 0:
                 logging.warning("No documents in collection")
-                return []
+                return QueryResponse(results=[], has_results=False)
             
             # Search in ChromaDB
             logging.info(f"Searching for top {num_results * 2} results")
@@ -155,24 +154,26 @@ class DocumentService:
                     logging.info(f"Skipping result due to low relevance: {relevance} < {min_relevance}")
                     continue
                 
-                result = {
-                    "text": doc.page_content,
-                    "metadata": {
-                        "filename": doc.metadata["filename"],
-                        "doc_id": doc.metadata["doc_id"],
-                        "chunk": doc.metadata["chunk_index"],
-                        "similarity": float(similarity),
-                        "relevance": relevance
-                    },
-                    "is_relevant": self._is_relevant(relevance)
-                }
+                result = QueryResult(
+                    text=doc.page_content,
+                    metadata=DocumentMetadata(
+                        source=doc.metadata["source"],
+                        full_document=doc.metadata["full_document"],
+                        similarity=float(similarity),
+                        relevance=relevance
+                    ),
+                    is_relevant=self._is_relevant(relevance)
+                )
                 formatted_results.append(result)
             
             # Limit to requested number
             formatted_results = formatted_results[:num_results]
             logging.info(f"Returning {len(formatted_results)} final results")
             
-            return formatted_results
+            return QueryResponse(
+                results=formatted_results,
+                has_results=len(formatted_results) > 0
+            )
             
         except Exception as e:
             logging.error(f"Error querying documents: {str(e)}")

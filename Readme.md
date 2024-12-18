@@ -5,6 +5,10 @@ Run a personalized AI chat assistant on your local system, that you are able to 
 
 ![image](Chat.png)
 
+
+Context Panel, showing the documents that are available to the AI
+![image](Context.png)
+
 ### Installation Prerequisites
 
 - Mac M1/M2/M3

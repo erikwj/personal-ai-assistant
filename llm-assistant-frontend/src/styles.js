@@ -214,18 +214,11 @@ export const styles = css`
     width: 100%;
   }
 
-  .markdown-body code {
-    background-color: #1a1a1a;
-    padding: 1px 2px;
-    border-radius: 2px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    font-size: 0.9em;
+
+  .relative {
+    height: 100%;
   }
 
-  .markdown-body pre code {
-    padding: 0;
-    background-color: transparent;
-  }
 
   .markdown-body h1,
   .markdown-body h2,
