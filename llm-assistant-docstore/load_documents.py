@@ -1,101 +1,73 @@
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import TextLoader, DirectoryLoader
+import os
+os.environ["LANGCHAIN_DISABLE_TELEMETRY"] = "true"
+
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain_core.documents import Document
-import os
+from langchain.schema import Document
 import logging
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+def load_documents(documents_dir="documents"):
+    # Use the same embedding model configuration as DocumentService
+    embedding_model = HuggingFaceEmbeddings(
+        model_name="models/embeddings",  # Local path to model
+        model_kwargs={'device': 'cpu'},
+        encode_kwargs={'normalize_embeddings': True}
+    )
+    
+    # Initialize ChromaDB
+    persist_directory = "data/chromadb"
+    db = Chroma(
+        persist_directory=persist_directory,
+        embedding_function=embedding_model
+    )
 
-def load_documents(directory_path: str, db_directory: str):
-    try:
-        logger.info(f"Loading documents from {directory_path}")
-        
-        # Ensure directories exist
-        os.makedirs(directory_path, exist_ok=True)
-        os.makedirs(db_directory, exist_ok=True)
-
-        # Load all documents from directory
-        loader = DirectoryLoader(
-            directory_path,
-            glob="**/*.txt",
-            loader_cls=TextLoader
-        )
-        documents = loader.load()
-        logger.info(f"Loaded {len(documents)} documents")
-
-        if not documents:
-            logger.warning("No documents found!")
-            return None
-
-        # Store complete documents
-        complete_docs = {}
-        for doc in documents:
-            complete_docs[doc.metadata['source']] = doc.page_content
-        logger.info(f"Stored {len(complete_docs)} complete documents")
-
-        # Create chunks for searching
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
-            length_function=len,
-        )
-        
-        chunks = []
-        for doc in documents:
-            doc_chunks = text_splitter.split_text(doc.page_content)
-            for chunk in doc_chunks:
-                chunks.append({
-                    'content': chunk,
-                    'metadata': {
-                        'source': doc.metadata['source'],
-                        'full_document': complete_docs[doc.metadata['source']]
-                    }
-                })
-        logger.info(f"Created {len(chunks)} chunks")
-
-        # Convert chunks to documents with metadata
-        chunked_documents = [
-            Document(
-                page_content=chunk['content'],
-                metadata=chunk['metadata']
+    # Load documents from the documents directory
+    documents = []
+    loaded_sources = set()  # Track which files we've already loaded
+    
+    for filename in os.listdir(documents_dir):
+        if filename.endswith(".txt"):  # Add more extensions if needed
+            # Use just the filename without directory prefix for consistency
+            source_name = os.path.basename(filename)
+            
+            # Check if document already exists in the DB
+            existing_docs = db._collection.get(
+                where={"source": source_name}
             )
-            for chunk in chunks
-        ]
+            if existing_docs['ids']:
+                logging.info(f"Document {source_name} already exists in DB, skipping")
+                continue
 
-        # Initialize embeddings and vector store
-        logger.info("Initializing embeddings...")
-        embeddings = HuggingFaceEmbeddings()
-        
-        # Create or load the vector store
-        logger.info(f"Creating vector store in {db_directory}")
-        db = Chroma.from_documents(
-            documents=chunked_documents,
-            embedding=embeddings,
-            persist_directory=db_directory
-        )
-        
+            if source_name in loaded_sources:
+                logging.info(f"Document {source_name} already processed in this session, skipping")
+                continue
+
+            file_path = os.path.join(documents_dir, filename)
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    text = f.read()
+                    documents.append(
+                        Document(
+                            page_content=text,
+                            metadata={
+                                "source": source_name,  # Use normalized filename
+                                "full_document": text
+                            }
+                        )
+                    )
+                loaded_sources.add(source_name)
+                logging.info(f"Loaded document: {source_name}")
+            except Exception as e:
+                logging.error(f"Error loading {source_name}: {str(e)}")
+
+    # Add documents to ChromaDB
+    if documents:
+        db.add_documents(documents)
         db.persist()
-        logger.info("Vector store created and persisted successfully")
-        return db
-
-    except Exception as e:
-        logger.error(f"Error in load_documents: {str(e)}", exc_info=True)
-        raise
+        logging.info(f"Added {len(documents)} documents to the vector store")
+    else:
+        logging.warning("No documents found to load")
 
 if __name__ == "__main__":
-    # Test the document loading
-    DOCUMENTS_DIR = "documents"
-    DB_DIR = "data/chromadb"
-    
-    try:
-        db = load_documents(DOCUMENTS_DIR, DB_DIR)
-        if db:
-            # Test a simple query to verify the database works
-            results = db.similarity_search("test query", k=1)
-            logger.info(f"Test query returned {len(results)} results")
-            logger.info("Database creation and testing successful!")
-    except Exception as e:
-        logger.error(f"Failed to create database: {str(e)}") 
+    logging.basicConfig(level=logging.INFO)
+    load_documents() 

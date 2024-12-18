@@ -23,6 +23,7 @@ export class ContextPanel extends LitElement {
       top: 0;
       height: 100vh;
       z-index: 50;
+      pointer-events: none;
     }
 
     .panel-wrapper {
@@ -41,6 +42,7 @@ export class ContextPanel extends LitElement {
       border-left: 1px solid #111;
       display: flex;
       flex-direction: column;
+      pointer-events: auto;
     }
 
     .panel-container.visible {
@@ -83,6 +85,7 @@ export class ContextPanel extends LitElement {
       flex-direction: column;
       align-items: center;
       padding: 8px 0;
+      pointer-events: auto;
     }
 
     .toggle-button:hover {
@@ -268,16 +271,18 @@ export class ContextPanel extends LitElement {
 
       const data = await response.json();
       
-      // Deduplicate results based on source file
-      const seenSources = new Set();
-      this.contexts = data.results
-        .filter(result => {
-          if (seenSources.has(result.metadata.source)) {
-            return false;
-          }
-          seenSources.add(result.metadata.source);
-          return true;
-        })
+      // Deduplicate results based on source file and keep highest similarity match
+      const sourceMap = new Map();
+      data.results.forEach(result => {
+        const source = result.metadata.source;
+        if (!sourceMap.has(source) || sourceMap.get(source).metadata.similarity < result.metadata.similarity) {
+          sourceMap.set(source, result);
+        }
+      });
+
+      // Convert back to array and sort by similarity
+      this.contexts = Array.from(sourceMap.values())
+        .sort((a, b) => b.metadata.similarity - a.metadata.similarity)
         .map(result => ({
           text: result.text,
           source: result.metadata.source,
