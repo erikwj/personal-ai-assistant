@@ -42,7 +42,6 @@ export class ChatWindow extends LitElement {
 
       .messages-container {
         flex: 1 1 auto;
-        height: 470px;
         display: flex;
         flex-direction: column;
         overflow: hidden;

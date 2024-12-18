@@ -215,6 +215,10 @@ export const styles = css`
   }
 
 
+  .relative {
+    height: 100%;
+  }
+
 
   .markdown-body h1,
   .markdown-body h2,
