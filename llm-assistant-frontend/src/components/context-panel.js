@@ -1,4 +1,6 @@
 import { LitElement, html, css } from 'lit';
+import { marked } from 'marked';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 
 export class ContextPanel extends LitElement {
   static properties = {
@@ -23,6 +25,7 @@ export class ContextPanel extends LitElement {
       top: 0;
       height: 100vh;
       z-index: 50;
+      pointer-events: none;
     }
 
     .panel-wrapper {
@@ -41,6 +44,7 @@ export class ContextPanel extends LitElement {
       border-left: 1px solid #111;
       display: flex;
       flex-direction: column;
+      pointer-events: auto;
     }
 
     .panel-container.visible {
@@ -83,6 +87,7 @@ export class ContextPanel extends LitElement {
       flex-direction: column;
       align-items: center;
       padding: 8px 0;
+      pointer-events: auto;
     }
 
     .toggle-button:hover {
@@ -185,13 +190,14 @@ export class ContextPanel extends LitElement {
       position: fixed;
       top: 0;
       left: 0;
-      right: 320px;
+      right: 0;
       bottom: 0;
       background: rgba(0, 0, 0, 0.75);
       z-index: 100;
       padding: 2rem;
       overflow-y: auto;
       display: none;
+      pointer-events: auto;
     }
 
     .full-document-view.visible {
@@ -207,6 +213,7 @@ export class ContextPanel extends LitElement {
       position: relative;
       border: 1px solid #e5e7eb;
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      z-index: 101;
     }
 
     .document-content h2 {
@@ -246,6 +253,90 @@ export class ContextPanel extends LitElement {
       background-color: #f3f4f6;
       color: #1f2937;
     }
+
+    .markdown-content {
+      color: #fff;
+    }
+
+    .markdown-content h1,
+    .markdown-content h2,
+    .markdown-content h3,
+    .markdown-content h4,
+    .markdown-content h5,
+    .markdown-content h6 {
+      margin-top: 1.5em;
+      margin-bottom: 0.75em;
+      font-weight: 600;
+    }
+
+    .markdown-content p {
+      margin-bottom: 1em;
+      line-height: 1.625;
+    }
+
+    .markdown-content code {
+      background: #1a1a1a;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.9em;
+    }
+
+    .markdown-content pre {
+      background: #1a1a1a;
+      padding: 1em;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 1em 0;
+    }
+
+    .markdown-content pre code {
+      background: none;
+      padding: 0;
+      border-radius: 0;
+    }
+
+    .markdown-content ul,
+    .markdown-content ol {
+      margin: 1em 0;
+      padding-left: 2em;
+    }
+
+    .markdown-content li {
+      margin: 0.5em 0;
+    }
+
+    .markdown-content blockquote {
+      border-left: 4px solid #4b5563;
+      padding-left: 1em;
+      margin: 1em 0;
+      color: #9ca3af;
+    }
+
+    .markdown-content a {
+      color: #60a5fa;
+      text-decoration: underline;
+    }
+
+    .markdown-content a:hover {
+      color: #93c5fd;
+    }
+
+    .markdown-content table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1em 0;
+    }
+
+    .markdown-content th,
+    .markdown-content td {
+      border: 1px solid #4b5563;
+      padding: 0.5em;
+    }
+
+    .markdown-content th {
+      background: #1a1a1a;
+    }
   `;
 
   togglePanel() {
@@ -268,16 +359,18 @@ export class ContextPanel extends LitElement {
 
       const data = await response.json();
       
-      // Deduplicate results based on source file
-      const seenSources = new Set();
-      this.contexts = data.results
-        .filter(result => {
-          if (seenSources.has(result.metadata.source)) {
-            return false;
-          }
-          seenSources.add(result.metadata.source);
-          return true;
-        })
+      // Deduplicate results based on source file and keep highest similarity match
+      const sourceMap = new Map();
+      data.results.forEach(result => {
+        const source = result.metadata.source;
+        if (!sourceMap.has(source) || sourceMap.get(source).metadata.similarity < result.metadata.similarity) {
+          sourceMap.set(source, result);
+        }
+      });
+
+      // Convert back to array and sort by similarity
+      this.contexts = Array.from(sourceMap.values())
+        .sort((a, b) => b.metadata.similarity - a.metadata.similarity)
         .map(result => ({
           text: result.text,
           source: result.metadata.source,
@@ -307,8 +400,10 @@ export class ContextPanel extends LitElement {
           <div class="document-content">
             <button class="close-button" @click=${this.closeDocument}>&times;</button>
             <h2>${this.selectedContext?.source}</h2>
-            <div class="content-text">
-              ${this.selectedContext?.fullDocument}
+            <div class="markdown-content">
+              ${this.selectedContext?.fullDocument ? 
+                unsafeHTML(marked.parse(this.selectedContext.fullDocument)) : 
+                ''}
             </div>
           </div>
         </div>

@@ -1,4 +1,6 @@
 import os
+os.environ["LANGCHAIN_DISABLE_TELEMETRY"] = "true"
+
 from pathlib import Path
 import uuid
 from typing import List, Optional, Dict
@@ -65,13 +67,20 @@ class DocumentService:
 
     async def add_document(self, filename: str, content: bytes) -> str:
         try:
+            # Check if document with this filename already exists
+            existing_docs = self.db._collection.get(
+                where={"source": filename}
+            )
+            if existing_docs['ids']:
+                logging.info(f"Document {filename} already exists, skipping")
+                return existing_docs['ids'][0]
+
             text = content.decode('utf-8')
             doc_id = str(uuid.uuid4())
             chunks = self._chunk_text(text)
             
             logging.info(f"Processing document {filename} with {len(chunks)} chunks")
             
-            # Create Document objects for each chunk
             documents = []
             for chunk in chunks:
                 documents.append(
@@ -84,7 +93,6 @@ class DocumentService:
                     )
                 )
             
-            # Add to ChromaDB
             self.db.add_documents(documents)
             self.db.persist()
             
@@ -122,7 +130,6 @@ class DocumentService:
         try:
             logging.info(f"Querying documents with: '{query}'")
             
-            # Check if we have any documents
             doc_count = self.db._collection.count()
             logging.info(f"Total documents in collection: {doc_count}")
             
@@ -139,11 +146,17 @@ class DocumentService:
             
             logging.info(f"Found {len(results)} initial results")
             
-            # Format and filter results
-            formatted_results = []
+            # Use dict to deduplicate by source while keeping highest similarity
+            source_results = {}
             for doc, similarity in results:
+                source = doc.metadata["source"]
+                if source not in source_results or similarity > source_results[source][1]:
+                    source_results[source] = (doc, similarity)
+            
+            # Convert back to list and format results
+            formatted_results = []
+            for doc, similarity in source_results.values():
                 relevance = self._get_relevance_level(similarity)
-                logging.info(f"Result: similarity={similarity:.3f}, relevance={relevance}, text='{doc.page_content[:50]}...'")
                 
                 # Apply filters
                 if min_similarity is not None and similarity < min_similarity:
@@ -165,6 +178,9 @@ class DocumentService:
                     is_relevant=self._is_relevant(relevance)
                 )
                 formatted_results.append(result)
+            
+            # Sort by similarity
+            formatted_results.sort(key=lambda x: x.metadata.similarity, reverse=True)
             
             # Limit to requested number
             formatted_results = formatted_results[:num_results]
