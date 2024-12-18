@@ -4,7 +4,8 @@ export class ContextPanel extends LitElement {
   static properties = {
     query: { type: String },
     isVisible: { type: Boolean },
-    contexts: { type: Array }
+    contexts: { type: Array },
+    selectedContext: { type: Object }
   };
 
   constructor() {
@@ -12,6 +13,7 @@ export class ContextPanel extends LitElement {
     this.query = '';
     this.isVisible = false;
     this.contexts = [];
+    this.selectedContext = null;
   }
 
   static styles = css`
@@ -174,6 +176,76 @@ export class ContextPanel extends LitElement {
       writing-mode: vertical-rl;
       text-orientation: mixed;
     }
+
+    .context-item {
+      cursor: pointer;
+    }
+
+    .full-document-view {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 320px;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 100;
+      padding: 2rem;
+      overflow-y: auto;
+      display: none;
+    }
+
+    .full-document-view.visible {
+      display: block;
+    }
+
+    .document-content {
+      background-color: #2d2d2d;
+      padding: 2rem;
+      border-radius: 0.5rem;
+      max-width: 800px;
+      margin: 0 auto;
+      position: relative;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .document-content h2 {
+      color: #fafafa;
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .document-content .content-text {
+      color: #fff;
+      line-height: 1.625;
+      font-size: 0.875rem;
+    }
+
+    .close-button {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #4b5563;
+      width: 2rem;
+      height: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.375rem;
+      transition: all 0.2s;
+    }
+
+    .close-button:hover {
+      background-color: #f3f4f6;
+      color: #1f2937;
+    }
   `;
 
   togglePanel() {
@@ -210,7 +282,8 @@ export class ContextPanel extends LitElement {
           text: result.text,
           source: result.metadata.source,
           similarity: result.metadata.similarity,
-          relevance: result.metadata.relevance
+          relevance: result.metadata.relevance,
+          fullDocument: result.metadata.full_document
         }));
 
     } catch (error) {
@@ -218,9 +291,28 @@ export class ContextPanel extends LitElement {
     }
   }
 
+  showFullDocument(context) {
+    this.selectedContext = context;
+  }
+
+  closeDocument() {
+    this.selectedContext = null;
+  }
+
   render() {
     return html`
       <div class="panel-wrapper">
+        <div class="full-document-view ${this.selectedContext ? 'visible' : ''}"
+             @click=${(e) => e.target === e.currentTarget && this.closeDocument()}>
+          <div class="document-content">
+            <button class="close-button" @click=${this.closeDocument}>&times;</button>
+            <h2>${this.selectedContext?.source}</h2>
+            <div class="content-text">
+              ${this.selectedContext?.fullDocument}
+            </div>
+          </div>
+        </div>
+
         <div class="panel-container ${this.isVisible ? 'visible' : ''} bg-white shadow-lg">
           <button
             @click=${this.togglePanel}
@@ -243,7 +335,8 @@ export class ContextPanel extends LitElement {
                 : this.contexts.map(context => html`
                     <div class="bg-gray-50 rounded-lg p-3 border border-gray-200 
                               hover:border-gray-300 transition-colors duration-200
-                              hover:shadow-sm text-context">
+                              hover:shadow-sm text-context context-item"
+                       @click=${() => this.showFullDocument(context)}>
                       <p class="text-gray-700 text-sm leading-relaxed mb-2">${context.text}</p>
                       <div class="metadata-container">
                         <div class="metadata-item source-item">
