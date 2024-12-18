@@ -77,6 +77,10 @@ export class ContextPanel extends LitElement {
       cursor: pointer;
       border-radius: 4px 0 0 4px;
       transition: background-color 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 0;
     }
 
     .toggle-button:hover {
@@ -158,6 +162,18 @@ export class ContextPanel extends LitElement {
       background-color: #fee2e2;
       color: #991b1b;
     }
+
+    .arrow-icon {
+      display: inline-block;
+      transform: rotate(90deg);
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    .button-text {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+    }
   `;
 
   togglePanel() {
@@ -179,12 +195,24 @@ export class ContextPanel extends LitElement {
       });
 
       const data = await response.json();
-      this.contexts = data.results.map(result => ({
-        text: result.text,
-        source: result.metadata.source,
-        similarity: result.metadata.similarity,
-        relevance: result.metadata.relevance
-      }));
+      
+      // Deduplicate results based on source file
+      const seenSources = new Set();
+      this.contexts = data.results
+        .filter(result => {
+          if (seenSources.has(result.metadata.source)) {
+            return false;
+          }
+          seenSources.add(result.metadata.source);
+          return true;
+        })
+        .map(result => ({
+          text: result.text,
+          source: result.metadata.source,
+          similarity: result.metadata.similarity,
+          relevance: result.metadata.relevance
+        }));
+
     } catch (error) {
       console.error('Error fetching context:', error);
     }
@@ -198,7 +226,10 @@ export class ContextPanel extends LitElement {
             @click=${this.togglePanel}
             class="toggle-button"
           >
-            Context ${this.isVisible ? '←' : '→'}
+            <span class="arrow-icon">
+              ${this.isVisible ? '\u2190' : '\u2192'}
+            </span>
+            <span class="button-text">Context</span>
           </button>
 
           <div class="panel-header">
